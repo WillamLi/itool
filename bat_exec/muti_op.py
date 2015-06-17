@@ -10,6 +10,7 @@ class oSorMs:
     def __init__(self):
         self.type = type
         self.cmd = cmd
+        print self.type
 
     def choIce(type, ip,username,cmd,*password):
         print type
