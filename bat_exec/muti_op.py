@@ -26,13 +26,13 @@ class batExec():
 
     def choIce(self):
         if self.ssh_mysql == 'ssh':
-            print "Type is: ",self.ssh_mysql
+#            print "Type is: ",self.ssh_mysql
             self.osCmd()
         elif self.ssh_mysql == 'mysql':
             #self.mysqlCmd()
 	    pass
         else :
-            print "noCmd ssh_mysql"
+           print "noCmd ssh_mysql"
 
     def osCmd(self):
         ret = -1
@@ -81,7 +81,7 @@ def readIp(sourcefile,ssh_mysql,user,command):
 	time_start=time.time()
 	print "time_start",time_start
         ip = ip.strip('\n')
-        print ip
+        print "ip",ip
     	#batExec(ssh_mysql,ip,user,command).choIce()   
     	a=batExec(ssh_mysql,ip,user,command)   
 	a.choIce()
@@ -90,14 +90,10 @@ def readIp(sourcefile,ssh_mysql,user,command):
 	user_time=time_stop-time_start
 	print "user_time",user_time
 	
-        threads.append(threading.Thread(target=readIp,args=(sourcefile,ssh_mysql,user,command)))
 	print "--------------"
 
 
 def start():
-    readIp(sourcefile,ssh_mysql,user,command)
-    print "threads",threads
-    time.sleep(5)
     for t in threads:
 	t.start()
     for t in threads:
