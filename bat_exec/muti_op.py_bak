@@ -7,22 +7,22 @@ import threading
 
 
 class batExec:
-    def __init__(self, ssh_mysql, ip ,username, cmd):
-        self.ssh_mysql = ssh_mysql
+    def __init__(self, type, ip ,username, cmd):
+        self.type = type
         self.cmd = cmd
 	self.ip = ip
 	self.username = username
     
 
     def choIce(self):
-        if self.ssh_mysql == 'ssh':
-            print "Type is: ",self.ssh_mysql
-            self.osCmd()
-        elif self.ssh_mysql == 'mysql':
-            #self.mysqlCmd()
+        if self.type == 'os':
+            print "type",type
+            osCmd(self.ip, self.username, self.cmd)
+        elif self.type == 'mysql':
+            #mysqlCmd()
 	    pass
         else :
-            print "noCmd ssh_mysql"
+            print "noCmd type"
 
     def osCmd(self):
         ret = -1
@@ -53,9 +53,11 @@ class batExec:
         
         return ret
 
-#    def mysqlCmd(self)
+#    def mysqlCmd()
             
-a=batExec('ssh','10.105.11.47','work','ls')
+a=batExec('os','10.105.11.47','work','ls')
+
+print a.type,a.ip
 a.choIce()
 #b=a.choIce()      
 #print b      
