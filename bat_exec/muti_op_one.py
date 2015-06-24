@@ -6,7 +6,7 @@ import pexpect
 import threading
 import os
 import sys
-import time
+
 
 
 ip=''
@@ -72,36 +72,27 @@ class batExec():
 #sourcefile=sys.path[0]+"/"+sys.argv[1]
 #print source
 
-threads = []
-threadlock = threading.Lock()
 
 def readIp(sourcefile,ssh_mysql,user,command):
     f = open(sourcefile,'r')
     for ip in f.readlines():
-	time_start=time.time()
-	print "time_start",time_start
         ip = ip.strip('\n')
         print ip
     	#batExec(ssh_mysql,ip,user,command).choIce()   
     	a=batExec(ssh_mysql,ip,user,command)   
 	a.choIce()
-	time_stop=time.time()
-	print "time_stop",time_stop
-	user_time=time_stop-time_start
-	print "user_time",user_time
 	
-        threads.append(threading.Thread(target=readIp,args=(sourcefile,ssh_mysql,user,command)))
 	print "--------------"
 
 
-def start():
-    readIp(sourcefile,ssh_mysql,user,command)
-    print "threads",threads
-    time.sleep(5)
-    for t in threads:
-	t.start()
-    for t in threads:
-	t.join()
+#def start():
+#    threads = []
+#    threadlock = threading.Lock()
+#    threads.append(threading.Thread(target=readIp,args=(sourcefile,ssh_mysql,user,command)))
+#    for t in threads:
+#	t.start()
+#    for t in threads:
+#	t.join()
 
 
 
@@ -110,8 +101,8 @@ if __name__ == "__main__":
     ssh_mysql=sys.argv[2]
     user=sys.argv[3]
     command=sys.argv[4]	
-#    readIp(sourcefile,ssh_mysql,user,command)
-    start()
+    readIp(sourcefile,ssh_mysql,user,command)
+#    start()
 
 
 #b=a.choIce()      
