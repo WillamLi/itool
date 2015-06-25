@@ -15,8 +15,8 @@ if len(sys.argv) < 5:
     print "fileName,oper,ip,user,command"
 
 
-#class batExec(threading.Thread):
-class batExec():
+class batExec(threading.Thread):
+#class batExec():
     def __init__(self, ssh_mysql, ip ,username, cmd):
         self.ssh_mysql = ssh_mysql
         self.cmd = cmd
@@ -94,6 +94,8 @@ def readIp(sourcefile,ssh_mysql,user,command):
 
 
 def start():
+    for i in xrange(4):
+	threads.append(threading.Thread(target=batExec,args=(ssh_mysql,ip,user,command)))
     for t in threads:
 	t.start()
     for t in threads:
