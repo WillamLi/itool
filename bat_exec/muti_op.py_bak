@@ -1,0 +1,63 @@
+#!/usr/bin/python
+#coding=utf-8
+
+
+import pexpect
+import threading
+
+
+class batExec:
+    def __init__(self, type, ip ,username, cmd):
+        self.type = type
+        self.cmd = cmd
+	self.ip = ip
+	self.username = username
+    
+
+    def choIce(self):
+        if self.type == 'os':
+            print "type",type
+            osCmd(self.ip, self.username, self.cmd)
+        elif self.type == 'mysql':
+            #mysqlCmd()
+	    pass
+        else :
+            print "noCmd type"
+
+    def osCmd(self):
+        ret = -1
+        ssh = pexpect.spawn('ssh %s@%s "%s"' % (self.username, self.ip, self.cmd))
+        try:
+            i = ssh.expect(['password','continue connecting (yes/no)?'],timeout=5)
+            if i == 0 :
+                ssh.sendline(passwd)
+            elif i ==1:
+                ssh.sendline('yes\n')
+                ssh.expect('password:')
+                ssh.sendline(passwd)
+        
+            ssh.sendline(cmd)
+            r = ssh.read()
+            print t
+            ret =0
+        except pexpect.EOF:
+            ssh = pexpect.spawn('ssh %s@%s "%s"' % (self.username, self.ip, self.cmd))
+	    r = ssh.read()
+	    print r
+            print "EOF"
+            ssh.close()
+            ret = -1
+        except pexpect.TIMEOUT:
+            ssh.close()
+            ret = -2
+        
+        return ret
+
+#    def mysqlCmd()
+            
+a=batExec('os','10.105.11.47','work','ls')
+
+print a.type,a.ip
+a.choIce()
+#b=a.choIce()      
+#print b      
