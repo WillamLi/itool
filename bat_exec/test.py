@@ -1,35 +1,27 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# encoding: utf-8
 
-import pexpect
+#sudo easy_install fabric
+#fab -f mult.py dotask
 
-def ssh_cmd(username, ip, passwd, cmd):
-    ret = -1
-    ssh = pexpect.spawn('ssh %s@%s "%s"' % (username,ip, cmd))
-    try:
-        i = ssh.expect(['password:', 'continue connecting (yes/no)?'], timeout=5)
-        if i == 0 :
-            ssh.sendline(passwd)
-        elif i == 1:
-            ssh.sendline('yes\n')
-            ssh.expect('password: ')
-            ssh.sendline(passwd)
-        ssh.sendline(cmd)
-        r = ssh.read()
-        print r
-        ret = 0
-    except pexpect.EOF:
-    	ssh = pexpect.spawn('ssh %s@%s "%s"' % (username,ip, cmd))
-        r = ssh.read()
-	print r
-        print "EOF"
-        ssh.close()
-        ret = -1
-    except pexpect.TIMEOUT:
-        print "TIMEOUT"
-        ssh.close()
-        ret = -2
+from fabric.api import *
 
-    return ret 
+#操作一致的服务器可以放在一组，同一组的执行同一套操作
+env.roledefs = {
+            'testserver': ['user1@host1:port1',],  
+            'realserver': ['user2@host2:port2', ]
+            }
 
-ssh_cmd('work', '10.105.11.47','work','ls')
+#env.password = '这里不要用这种配置了，不可能要求密码都一致的，明文编写也不合适。打通所有ssh就行了',否则如果不声明env.password，执行到对应机器时会跳出要求输入密码的交互
+
+@roles('testserver')
+def task1():
+    run('ls -l | wc -l')
+
+@roles('realserver')
+def task2():
+    run('ls ~/temp/ | wc -l')
+
+def dotask():
+    execute(task1)
+    execute(task2)
