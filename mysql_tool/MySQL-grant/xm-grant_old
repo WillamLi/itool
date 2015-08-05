@@ -1,0 +1,220 @@
+#!/bin/bash
+
+#set -n
+#MySQLBin=/home/work/mysql/bin/mysql
+MySQLBin=$(which mysql)
+DbUser="mysql_monitor"
+DbPass="caljnj4e"
+ExecGrant="False"
+SHOW="False"
+#ReadUser="False"
+#WriteUser="False"
+
+function usage(){
+    echo -e "Usage: $0 [OPTIONS]\n\t -o old IP\n\t -n new IP ["ip1 ip2.."]\n\t -h hostname \n\t -p port \n\t -u db user name"
+    echo -e "\t -d database name ( for add new user )\n\t -t table name ( for add new user ) \n\t -p password,it is random string if empty\n\t -r only read user\n\t -w write user (-r and -w are mutex)"
+    echo -e "\t -e execute grant command\n\t -v show old IP privilege"
+}
+
+function check_ip(){
+    IPAddr=$1
+    IPCheck=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select inet_aton('$IPAddr');")
+    if [ "$IPCheck" = "NULL" ]; then
+        echo "Error: $IPAddr is not the correct IP address"
+        exit -1
+    else
+        IPCheck=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select inet_ntoa('$IPCheck');")
+        if [ "$IPCheck" != "$IPAddr" ]; then
+            echo "Error: $IPAddr is not the correct IP address"
+            exit -1
+        fi
+    fi
+#    echo "$IPAddr"
+}
+
+function  clone_user(){
+    NewIPAddr=$1
+    echo "-- NewIP: $NewIPAddr"
+    check_ip $NewIPAddr
+    script_name=$(basename $0)
+    tmpfile="/dev/shm/.${script_name}_$$.sql"
+    if [ "$OldIP" != "" ]; then
+        echo "-- OldIP: $OldIP"
+        check_ip $OldIP
+        $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select user,IF(LENGTH(password)=0,'nopassword',password) from mysql.user where host='$OldIP';" | while read line ;
+        do
+            u=$(echo $line | awk '{print $1}')
+            p=$(echo $line | awk '{print $2}')
+            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "show grants for $u@'$OldIP';" >> $tmpfile
+        done
+        [ ! -f "$tmpfile" ] && { echo -e "-- Sorry! No \033[31m \033[5m $OldIP \033[0m privilege info"; continue; }
+        [ "$SHOW" = "True" ] && { cat $tmpfile; continue; }
+        sed -i "s/$OldIP/$NewIPAddr/g" $tmpfile
+        sed -i "s/$/;/g" $tmpfile
+        [ "$ExecGrant" = "False" ] && cat $tmpfile || $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile
+    elif [ "$UserName" != "" ]; then
+        $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select user,IF(LENGTH(password)=0,'nopassword',password),host from mysql.user where user='$UserName' limit 1;" | while read line ;
+        do
+            u=$(echo $line | awk '{print $1}')
+            p=$(echo $line | awk '{print $2}')
+            OldIP=$(echo $line | awk '{print $3}') 
+            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "show grants for $u@'$OldIP';" >> $tmpfile
+            sed -i "s/$OldIP/$NewIPAddr/g" $tmpfile
+        done
+        [ ! -f "$tmpfile" ] && { echo -e "-- Sorry! No \033[31m \033[5m $UserName \033[0m privilege info"; continue; }
+        [ "$SHOW" = "True" ] && { cat $tmpfile; continue; }
+        sed -i "s/$/;/g" $tmpfile
+        [ "$ExecGrant" = "True" ] && { $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile ; } || cat $tmpfile
+    elif [ "$OldIP" != "" -a "$UserName" != "" ]; then
+        $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select user,IF(LENGTH(password)=0,'nopassword',password),host from mysql.user where user='$UserName' and host='$OldIP' limit 1;" | while read line ;
+        do
+            u=$(echo $line | awk '{print $1}')
+            p=$(echo $line | awk '{print $2}')
+            OldIP=$(echo $line | awk '{print $3}') 
+            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "show grants for $u@'$OldIP';" >> $tmpfile
+            sed -i "s/$OldIP/$NewIPAddr/g" $tmpfile
+        done
+        [ ! -f "$tmpfile" ] && { echo -e "-- Sorry! No \033[31m \033[5m $UserName \033[0m privilege info"; continue; }
+        [ "$SHOW" = "True" ] && { cat $tmpfile; continue; }
+        sed -i "s/$/;/g" $tmpfile
+        [ "$ExecGrant" = "True" ] && { $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile ; } || cat $tmpfile
+    fi
+    rm -f $tmpfile
+}
+
+function new_user(){
+    NewIPAddr=$1
+    echo "-- NewIP: $NewIPAddr"
+    check_ip $NewIPAddr
+    script_name=$(basename $0)
+    tmpfile="/dev/shm/.${script_name}_$$.sql"
+
+    if [ -z "$ReadUser" -a -z "$WriteUser" ]; then
+        usage
+        echo "Please input -r or -w"
+        exit 10 
+    elif [ -n "$ReadUser" -a -n "$WriteUser" ]; then
+        usage
+        echo "Please do'nt input -r and -w at the same time"
+        exit 10 
+    fi
+
+    PrivTableInfo=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SELECT host,user FROM mysql.user WHERE user='$UserName' AND Host='$NewIPAddr';")
+    if [ -n "$PrivTableInfo" ]; then 
+         $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS FOR $UserName@'$NewIPAddr';" > $tmpfile 
+         cat $tmpfile && rm -f $tmpfile;
+         echo -e "Sorry! privilege info \033[31m \033[5m $OldIP \033[0m already exist";
+         continue;
+     fi
+
+    [ -n "$ReadUser" ] && PrivStr=$"SELECT"
+    [ -n "$WriteUser" ] && PrivStr="SELECT, INSERT, UPDATE, DELETE"
+    echo  "USE mysql; GRANT $PrivStr ON $DataBase.* TO $UserName@'$NewIPAddr'  IDENTIFIED BY '$Password';" > $tmpfile
+    cat $tmpfile 
+    [ "$ExecGrant" = "True" ] && $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile
+    rm -f $tmpfile
+}
+
+function new_user_by_table(){
+    NewIPAddr=$1
+    echo "-- NewIP: $NewIPAddr"
+    check_ip $NewIPAddr
+    script_name=$(basename $0)
+    tmpfile="/dev/shm/.${script_name}_$$.sql"
+
+    [ -z "$UserName" ] && { usage; echo "Please input username by -u"; exit 3; }
+    if [ -z "$ReadUser" -a -z "$WriteUser" ]; then
+        usage
+        echo "Please input -r or -w"
+        exit 10 
+    elif [ -n "$ReadUser" -a -n "$WriteUser" ]; then
+        usage
+        echo "Please do'nt input -r and -w at the same time"
+        exit 10 
+    fi
+    [ -n "$ReadUser" ] && PrivList=$"SELECT"
+    [ -n "$WriteUser" ] && PrivList="SELECT, INSERT, UPDATE, DELETE"
+
+    for Table in $TableName
+    do
+        echo
+        GrantTable=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "USE $DataBase; SHOW TABLES;" | grep -wi $Table )
+        if [ -z "$GrantTable" ]; then
+            echo -e "Sorry! Table \033[31m \033[5m $DataBase.$Table \033[0m dont exist";
+            continue;
+        fi
+        PrivTable=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "USE mysql; SHOW TABLES;" | grep -wi Tables_priv)
+        if [ -n "$PrivTable" ]; then
+            PrivTableInfo=$($MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SELECT Host,User FROM mysql.$PrivTable WHERE User='$UserName' AND Host='$NewIPAddr' AND Db='$DataBase' AND table_name='$Table'; ")
+            if [ -n "$PrivTableInfo" ]; then 
+                $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS FOR $UserName@'$NewIPAddr';" > $tmpfile 
+                cat $tmpfile && rm -f $tmpfile;
+                echo -e "Sorry! privilege info \033[31m \033[5m $UserName@$OldIP \033[0m for \033[31m \033[5m $$DataBase.$Table \033[0m already exist";
+                continue;
+            fi
+        fi
+        echo  "USE mysql; GRANT $PrivList ON $DataBase.$Table TO $UserName@'$NewIPAddr'  IDENTIFIED BY '$Password';" > $tmpfile
+        cat $tmpfile 
+        [ "$ExecGrant" = "True" ] && $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile
+        rm -f $tmpfile
+    done
+}
+
+while getopts 'd:t:p:o:n:h:P:u:evrw' OPT
+do
+    case $OPT in
+        h)
+            HostName="$OPTARG";;
+        P)
+            Port="$OPTARG";;
+        u)
+            UserName="$OPTARG";;
+        d)
+            DataBase="$OPTARG";;
+        t)
+            TableName="$OPTARG";;
+        o)
+            OldIP="$OPTARG";;
+        n)
+            NewIP="$OPTARG";;
+        p)
+            Password="$OPTARG";;
+        r)
+            ReadUser="True";;
+        w)
+            WriteUser="True";;
+        e)
+            ExecGrant="True";;
+        v)
+            SHOW="True";;
+        \?)
+            usage
+            exit -1;;
+    esac
+done
+if [ $OPTIND -le 1 ];then
+    usage
+    exit 2
+fi
+
+[ ! -x "$MySQLBin" ] && { echo -e "Please check command \033[31m \033[5m mysql \033[0m install"; exit 1;}
+
+#if [ -z "$NewIP" -o -z "$HostName" -o -z "$UserName" ] ; then
+if [ -z "$NewIP" -o -z "$HostName" ] ; then
+    usage
+    echo "Please input -n new ip and -h db host name"
+    exit -1
+fi
+
+
+[ -z "$Password" ] && Password=$(date +%s | sha256sum | base64 | head -c32; echo)
+
+for ipaddr in $NewIP
+do
+    echo 
+    if [ -n "$DataBase" ]; then
+        [ -z "$TableName" ] && new_user $ipaddr || new_user_by_table $ipaddr
+    else
+        clone_user $ipaddr
+    fi
+done
