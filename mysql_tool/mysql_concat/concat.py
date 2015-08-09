@@ -1,6 +1,11 @@
 #!/bin/python
 #coding=utf-8
 
+import MySQLdb
+import sys
+from optparse import OptionParser
+
+
 
 #可以全部到数据库中去执行，也可以查出列之后再单独执行
 
