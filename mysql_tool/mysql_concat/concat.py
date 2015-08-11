@@ -21,6 +21,9 @@ def CHECK_ARGV():
     
     parser.add_option("-d","--database",dest="db",help="read database ")
     parser.add_option("-t","--table",dest="tb",help="read table")
+    parser.add_option("-u","--user",dest="user",help="conn user")
+    parser.add_option("-p","--passwd",dest="passwd",help="conn passwd")
+    parser.add_option("-P","--port",dest="port",--default=3306,help="conn port")
     
     parser.add_option("-E","--SQL",dest="execsql",default="",help="Input U Exec SQL")
     
@@ -37,9 +40,11 @@ def CHECK_ARGV():
     else:
         return options 
 
-#def Mysql_con():
-#db=MySQLdb.connect(user=user_value,host=options.hostname,passwd=pass_value,port=port_value,charset='utf8')
-#cursor = db.cursor()    
+def Mysql_con(**config):
+    #db=MySQLdb.connect(user=user_value,host=options.hostname,passwd=pass_value,port=port_value,charset='utf8')
+    db=MySQLdb.connect(user=options.user,host=options.hostname,passwd=pass_value,port=port_value,charset='utf8')
+    cursor = db.cursor()    
+    return 
     
 #statement = options.execsql
 #cursor.execute(statement)
