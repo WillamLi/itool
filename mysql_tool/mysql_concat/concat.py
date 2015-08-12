@@ -7,12 +7,6 @@ from optparse import OptionParser
 
 
 
-user_value="reboot"
-pass_value='reboot123'
-port_value=3306
-
-
-
 
 def CHECK_ARGV():
     argv_dict = {}
