@@ -1,5 +1,3 @@
-#!/bin/python
-#coding=utf-8
 
 import MySQLdb
 import sys
@@ -15,6 +13,7 @@ port_value=3306
 
 
 def CHECK_ARGV():
+    argv_dict = {}
     usage = "usage: %prog [options] arg1 arg2" 
     parser = OptionParser(usage)
     parser.add_option("-H","--host",dest="hostname",help="hostname,you DB Hostname or IP")
@@ -23,87 +22,83 @@ def CHECK_ARGV():
     parser.add_option("-t","--table",dest="tb",help="read table")
     parser.add_option("-u","--user",dest="user",help="conn user")
     parser.add_option("-p","--passwd",dest="passwd",help="conn passwd")
-    parser.add_option("-P","--port",dest="port",--default=3306,help="conn port")
-    
-    parser.add_option("-E","--SQL",dest="execsql",default="",help="Input U Exec SQL")
+    parser.add_option("-P","--port",dest="port",default=3306,help="MySQL Port")
+    parser.add_option("-C","--character",dest="character",default='utf8',help="MySQL Charset") 
+    parser.add_option("-w","--where",dest="where",default="",help="Input U Where")
     
     
     (options,args)=parser.parse_args()
     
     len_argv=len(sys.argv[1:])
-    print "len_argv:",len_argv
     if len_argv == 0 :
         print parser.print_help()
         parser.exit(1)
     if not options.db or not options.tb or not options.hostname:
         print 'Need database and table'
     else:
-        return options 
+        exec("argv_dict ="+str(options))
+        return argv_dict
 
-def Mysql_con(**config):
-    #db=MySQLdb.connect(user=user_value,host=options.hostname,passwd=pass_value,port=port_value,charset='utf8')
-    db=MySQLdb.connect(user=options.user,host=options.hostname,passwd=pass_value,port=port_value,charset='utf8')
-    cursor = db.cursor()    
-    return 
     
-#statement = options.execsql
-#cursor.execute(statement)
-#s = cursor.fetchall()
+def Mysql_con(config):
+    host_value = config['hostname']
+    user_value = config['user']
+    passwd_value = config['passwd']
+    db_value = config['db']
+    tb_value = config['tb']
+    port_value = config['port']
+    charset_value = config['character']
+    print host_value,user_value,passwd_value,db_value,tb_value,port_value,charset_value    
 
-#可以全部到数据库中去执行，也可以查出列之后再单独执行
+    try:
+        db = MySQLdb.connect(user=user_value,host=host_value,passwd=passwd_value,port=port_value,charset=charset_value)
+        cursor = db.cursor()
+        return cursor
+    except Exception,e:
+        print "con mysql err:",e
 
-#table_name = 'tb_pac_glide_history'
-def GetCloumn(db_name,table_name):
+
+
+
+
+
+def GetCloumn(db_name,table_name,config):
+    cursor = Mysql_con(config)
     cloumn_sql = """select concat(group_concat(COLUMN_NAME)) from information_schema.COLUMNS where table_schema = '%s' and table_name = '%s'""" %(db_name,table_name)
     cursor.execute(cloumn_sql)
     result = cursor.fetchall()
     for i in result:
         cloumn = i[0]
-    print cloumn,11111111111
     return cloumn
 
-#GetCloumnSQL('tb_pac_glide_history')
-
-#print cloumn_sql
 
 
-#cloumn = "ID,ORGI_ID,SETTLE_API,GLIDE_TYPE,BANK_CODE,BIZ_CODE,BIZ_NO,AMOUNT,BIZ_DATE,TRANS_ID,COMPARE_BATCH_NO,COMPARE_DATE,VOUCHER_NO,STANDBY_VOUCHER_NO,GMT_CREATE_ORGI,GMT_CREATE,GMT_MODIFIED,OPERATOR,CONFIRM_OPERATOR,MEMO,CLEARING_FLAG,BRANCH,PAYMENT_SEQ_NO,FUNDS_CHANNEL,BIZ_TYPE,COMPARE_FLAG,ORGI_MEMO,PRODUCT_CODE,PAYMENT_CODE,IS_WRITEOFF,OUT_NO,FILE_NAME,OPERATOR_MEMO,AUDIT_MEMO"
 
-#cloumn = "id,name"
 
-def Result_sql(db_name,table_name):
-    cloumn = GetCloumn(db_name,table_name)
-    print cloumn,222222222222
-    #table_name = GetCloumnSQL('tb_pac_glide_history')
+
+def Result_sql(db_name,table_name,config):
+    cloumn = GetCloumn(db_name,table_name,config)
     cloumn_list = list(cloumn.split(','))
     vlues_concat_sql = ''
-    #str="select %s from %s values(%s)" % (cloumn,table_name,vlues_concat_sql)
     for i in cloumn_list:
         pass
-        #print i
-        #vlues_concat_sql += "'IFNULL(%s,'')'," % (i)
         vlues_concat_sql +=  "\"'\",IFNULL(%s,''),\"',\"," % (i)
-    #vlues_concat_sql =  vlues_concat_sql[:-1]
     vlues_concat_sql =  vlues_concat_sql[:-3] + vlues_concat_sql[-2:-1]
-    print vlues_concat_sql
-    #str="select %s from %s values(%s)" % (cloumn,table_name,vlues_concat_sql)
-    db_tb=db+"."+tb
-    #str_2 = "select concat('insert into %s(%s) values(',%s,')') from %s" % (tabl_name,cloumn,vlues_concat_sql,table_name)
-    str_2 = """select concat('insert into %s(%s) values(',%s,')') from %s""" % (db_tb,cloumn,vlues_concat_sql,db_tb)
-    print "str:-----------",str_2
-    #print str
+    db_tb = db_name+"."+table_name
+    sql = """select concat('insert into %s(%s) values(',%s,')') from %s""" % (db_tb,cloumn,vlues_concat_sql,db_tb)
+    if not config['where']:
+        str_2 = sql
+        print "str:",str_2
+    else:
+        where1 = config['where']
+        str_2 = sql + " where " + where1 
+        print "str:",str_2
 
 def main():
-    options = CHECK_ARGV()
-    hostname = options.hostname
-    DB = options.db
-    table = options.tb
-    db=MySQLdb.connect(user=user_value,host=hostname,passwd=pass_value,port=port_value,charset='utf8')
-    cursor = db.cursor() 
-    Result_sql(DB,table)
-    
+    config = CHECK_ARGV()
+    result=Result_sql(config['db'],config['tb'],config)
+
     
 
 if __name__ == '__main__':
     main()
-    #Result_sql()
