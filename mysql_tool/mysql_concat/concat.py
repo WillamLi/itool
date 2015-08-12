@@ -1,3 +1,5 @@
+#!/bin/python
+#codint=utf-8
 
 import MySQLdb
 import sys
