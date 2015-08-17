@@ -4,8 +4,6 @@
 #MySQLBin=/home/work/mysql/bin/mysql
 MySQLBin=$(which mysql)
 DbUser="testall"
-#DbUser="autopilot"
-#DbPass="YTkzNDJjZDRhNWMyNzJkOTZiMTllMTI4"
 DbPass="testall"
 ExecGrant="False"
 DISPLAY="False"
