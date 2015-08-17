@@ -64,9 +64,9 @@ function  clone_user(){
         fi
         done
         [ ! -f "$tmpfile" ] && { echo -e "-- Sorry! No \033[31m $OldIP \033[0m privilege info"; continue; }
-        [ "$DROPUSER" != "TRUE" ] && [ "$DISPLAY" = "True" ] && { cat $tmpfile; continue; }
+        [ "$DROPUSER" != "TRUE" ] && [ "$DISPLAY" = "True" ] && { cat $tmpfile; rm -f $tmpfile; continue; }
         #[ "$DISPLAY" = "True" ] && { sed -i "s/$/;/g" $tmpfile;cat $tmpfile; continue; }
-        [ "$DISPLAY" = "True" ] && { cat $tmpfile; continue; }
+        [ "$DISPLAY" = "True" ] && { cat $tmpfile; rm -f $tmpfile; continue; }
         sed -i "s/$OldIP/$NewIPAddr/g" $tmpfile
         sed -i "s/$/;/g" $tmpfile
         [ "$ExecGrant" = "False" ] && cat $tmpfile || $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile
