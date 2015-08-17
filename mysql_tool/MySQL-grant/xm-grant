@@ -186,7 +186,7 @@ function usage(){
     echo -e "\tClone user:\t$0 -h 'hostname' -P 'port' -u 'Old User' -n 'NewIP1,NewIP2'"
     echo -e "\tClone IP:\t$0 -h 'hostname' -P 'port' -o 'Old IP' -n 'NewIP1,NewIP2'"
     echo -e "\tAdd user:\t$0 -h 'hostname' -P 'port' -u 'dbuser' -n 'NewIP1,NewIP2' -d 'dbname' -t 'tablename' [-r|-w] -p 'passwd'"
-    echo -e "\tDrop user@ip:\t$0 -h 'hostname' -P 'port' -u 'dbuser' -o "1.1.1.1" -v -D"
+    echo -e "\tDrop user@ip:\t$0 -h 'hostname' -P 'port' -o 'Old IP' -n '1.1.1.1' -v -D"
     echo -e "\n\tOther:\n\t\t-e execute grant command \n\t\t-v SHOW old IP privilege \n\t\t-D drop user"
 }
 
