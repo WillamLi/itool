@@ -3,10 +3,13 @@
 #set -n
 #MySQLBin=/home/work/mysql/bin/mysql
 MySQLBin=$(which mysql)
-DbUser="autopilot"
-DbPass="YTkzNDJjZDRhNWMyNzJkOTZiMTllMTI4"
+DbUser="testall"
+#DbUser="autopilot"
+#DbPass="YTkzNDJjZDRhNWMyNzJkOTZiMTllMTI4"
+DbPass="testall"
 ExecGrant="False"
 DISPLAY="False"
+DROPUSERIP="False"
 #ReadUser="False"
 #WriteUser="False"
 
@@ -24,12 +27,12 @@ function check_ip(){
             exit -1
         fi
     fi
-#    echo "$IPAddr"
+#    echo "-- $IPAddr"
 }
 
 function  clone_user(){
     NewIPAddr=$1
-    echo "NewIP: $NewIPAddr"
+    echo "-- NewIP: $NewIPAddr"
     check_ip $NewIPAddr
     script_name=$(basename $0)
     tmpfile="/dev/shm/.${script_name}_$$.sql"
@@ -40,7 +43,7 @@ function  clone_user(){
         do
             u=$(echo $line | awk '{print $1}')
             p=$(echo $line | awk '{print $2}')
-            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS for $u@'$OldIP';" >> $tmpfile
+            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS for $u@'$OldIP';"| >> $tmpfile
         done
         [ ! -f "$tmpfile" ] && { echo -e "Sorry! No \033[31m $OldIP \033[0m privilege info"; continue; }
         [ "$DISPLAY" = "True" ] && { cat $tmpfile; continue; }
@@ -48,15 +51,21 @@ function  clone_user(){
         sed -i "s/$/;/g" $tmpfile
         [ "$ExecGrant" = "False" ] && cat $tmpfile || $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} < $tmpfile
     elif [ "$OldIP" != "" ]; then
-        echo "OldIP: $OldIP"
+        echo "-- OldIP: $OldIP"
         check_ip $OldIP
         $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "select user,IF(LENGTH(password)=0,'nopassword',password) from mysql.user where host='$OldIP';" | while read line ;
-        do
+    do
             u=$(echo $line | awk '{print $1}')
             p=$(echo $line | awk '{print $2}')
-            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS for $u@'$OldIP';" >> $tmpfile
+            if [ "$DROPUSERIP"  -a  "$DISPLAY"  ];then
+                echo "drop user '$u'@'$OldIP';" >>$tmpfile
+            else
+            $MySQLBin -u$DbUser -p$DbPass -h$HostName -P${Port:-3306} -Bsqe "SHOW GRANTS for $u@'$OldIP';"|awk '{printf"%s;\n",$0}' >> $tmpfile
+        fi
         done
-        [ ! -f "$tmpfile" ] && { echo -e "Sorry! No \033[31m $OldIP \033[0m privilege info"; continue; }
+        [ ! -f "$tmpfile" ] && { echo -e "-- Sorry! No \033[31m $OldIP \033[0m privilege info"; continue; }
+        [ "$DROPUSER" != "TRUE" ] && [ "$DISPLAY" = "True" ] && { cat $tmpfile; continue; }
+        #[ "$DISPLAY" = "True" ] && { sed -i "s/$/;/g" $tmpfile;cat $tmpfile; continue; }
         [ "$DISPLAY" = "True" ] && { cat $tmpfile; continue; }
         sed -i "s/$OldIP/$NewIPAddr/g" $tmpfile
         sed -i "s/$/;/g" $tmpfile
@@ -179,10 +188,11 @@ function usage(){
     echo -e "\tClone user:\t$0 -h 'hostname' -P 'port' -u 'Old User' -n 'NewIP1,NewIP2'"
     echo -e "\tClone IP:\t$0 -h 'hostname' -P 'port' -o 'Old IP' -n 'NewIP1,NewIP2'"
     echo -e "\tAdd user:\t$0 -h 'hostname' -P 'port' -u 'dbuser' -n 'NewIP1,NewIP2' -d 'dbname' -t 'tablename' [-r|-w] -p 'passwd'"
-    echo -e "\n\tOther:\n\t\t-e execute grant command \n\t\t-v SHOW old IP privilege"
+    echo -e "\tDrop user@ip:\t$0 -h 'hostname' -P 'port' -u 'dbuser' -o "1.1.1.1" -v -D"
+    echo -e "\n\tOther:\n\t\t-e execute grant command \n\t\t-v SHOW old IP privilege \n\t\t-D drop user"
 }
 
-while getopts 'd:t:p:o:n:h:P:u:evrw' OPT
+while getopts 'd:t:p:o:n:h:P:u:evrwD' OPT
 do
     case $OPT in
         h)
@@ -209,6 +219,8 @@ do
             ExecGrant="True";;
         v)
             DISPLAY="True";;
+        D)
+            DROPUSERIP="True";;
         \?)
             usage
             exit -1;;
@@ -233,7 +245,7 @@ fi
 
 while IFS=',' read -ra IP; do
     for ipaddr in "${IP[@]}"; do
-        echo $ipaddr
+        echo "-- $ipaddr"
         echo 
         if [ -n "$DataBase" ]; then
             [ -z "$TableName" ] && new_user $ipaddr || new_user_by_table $ipaddr
