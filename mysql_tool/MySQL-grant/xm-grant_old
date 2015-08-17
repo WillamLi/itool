@@ -3,8 +3,8 @@
 #set -n
 #MySQLBin=/home/work/mysql/bin/mysql
 MySQLBin=$(which mysql)
-DbUser="mysql_monitor"
-DbPass="caljnj4e"
+DbUser=""
+DbPass=""
 ExecGrant="False"
 SHOW="False"
 #ReadUser="False"
